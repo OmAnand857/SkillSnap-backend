@@ -1,3 +1,4 @@
+const { options } = require('pdfkit');
 const { getAdmin } = require('../config/firebase');
 const admin = getAdmin();
 const db = admin.firestore();
@@ -12,19 +13,43 @@ async function getAssessment(skillId) {
   const doc = await db.collection('assessments').doc(skillId).get();
   if (!doc.exists) return null;
   const data = doc.data();
-  // For each question, do not include hidden test cases
-  if (data.questions && Array.isArray(data.questions)) {
-    data.questions = data.questions.map(q => ({
-      id: q.id,
-      title: q.title,
-      description: q.description,
-      difficulty: q.difficulty,
-      template_code: q.template_code,
-      // do not include hidden test cases
-      testcases: (q.testcases || []).filter(t => !t.is_hidden).map(t => ({ stdin: t.stdin, expected_output: t.expected_output }))
-    }));
+
+  // Build a sanitized assessment object to send to the frontend
+  const assessment = {
+    id: doc.id,
+    title: data.title,
+    timeLimit: data.timeLimit,
+    questions: []
+  };
+
+  if (Array.isArray(data.questions)) {
+    assessment.questions = data.questions.map(q => {
+      const base = {
+        id: q.id,
+        type: q.type,
+        title: q.title,
+        text: q.text || q.description || ''
+      };
+
+      if (q.difficulty) base.difficulty = q.difficulty;
+
+      // MCQ questions: include only options (do NOT include 'correct')
+      if (q.type === 'mcq') {
+        base.options = q.options || [];
+      }
+
+      // Code questions: include code template / examples / constraints, but NOT testcases
+      if (q.type === 'code') {
+        base.initialCode = q.initialCode || q.template_code || q.initial_code || '';
+        base.examples = q.examples || [];
+        base.constraints = q.constraints || [];
+      }
+
+      return base;
+    });
   }
-  return data;
+
+  return assessment;
 }
 
 async function getHiddenTestCases(problemId) {
@@ -39,4 +64,18 @@ async function getProblem(problemId) {
   return doc.exists ? { id: doc.id, ...doc.data() } : null;
 }
 
-module.exports = { getSkills, getAssessment, getHiddenTestCases, getProblem };
+// Fetch all testcases (visible and hidden) for a problem
+async function getAllTestCases(problemId) {
+  const snapshot = await db.collection('problems').doc(problemId).collection('testcases').get();
+  if (snapshot.empty) return [];
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Return the raw assessment document (including answers/testcases) for grading
+async function getAssessmentRaw(skillId) {
+  const doc = await db.collection('assessments').doc(skillId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+module.exports = { getSkills, getAssessment, getHiddenTestCases, getProblem, getAssessmentRaw, getAllTestCases }; 
