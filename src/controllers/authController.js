@@ -46,4 +46,28 @@ async function me(req, res) {
   }
 }
 
-module.exports = { signup, login, me };
+// Update profile (name, password)
+async function updateMe(req, res) {
+  try {
+    const uid = req.user && req.user.uid;
+    if (!uid) return res.status(401).json({ error: 'Auth required' });
+
+    const { displayName, password } = req.body;
+    const update = {};
+    if (displayName) update.displayName = displayName;
+    if (password) update.password = password;
+
+    if (!Object.keys(update).length) return res.status(400).json({ error: 'No fields to update' });
+
+    const userRecord = await admin.auth().updateUser(uid, update);
+    // update firestore
+    await db.collection('users').doc(uid).set({ displayName: userRecord.displayName || null }, { merge: true });
+
+    return res.json({ ok: true, user: { uid: userRecord.uid, email: userRecord.email, displayName: userRecord.displayName } });
+  } catch (err) {
+    console.error('updateMe error', err);
+    return res.status(500).json({ error: 'Failed to update user' });
+  }
+}
+
+module.exports = { signup, login, me, updateMe };

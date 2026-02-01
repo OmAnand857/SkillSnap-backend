@@ -9,6 +9,8 @@ const skillsRoutes = require('./routes/skills');
 const assessmentsRoutes = require('./routes/assessments');
 const executeRoutes = require('./routes/execute');
 const debugRoutes = require('./routes/debug');
+const envDebugRoutes = require('./routes/envDebug');
+const certificatesRoutes = require('./routes/certificates');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,7 +28,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/skills', skillsRoutes);
 app.use('/api/assessments', assessmentsRoutes);
 app.use('/api/execute', executeRoutes);
+app.use('/api/certificates', certificatesRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/debug/env', envDebugRoutes);
 
 app.get('/', (req, res) => res.json({ ok: true, server: 'skillsnap-backend' }));
 
