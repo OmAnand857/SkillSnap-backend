@@ -1,0 +1,10 @@
+.env
+node_modules/
+logs/
+coverage/
+# Firebase service account key (if stored locally for dev)
+serviceAccountKey.json
+# Ignore any service account JSON files created by Google/Firebase
+*-firebase-adminsdk-*.json
+# specific file (remove from repo and keep locally)
+forge-a3ede-firebase-adminsdk-fbsvc-d6f9abb385.json
